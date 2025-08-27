@@ -56,6 +56,7 @@ For rebound compaction, there are two additional parameters available:
 - `compaction.rebound_needed_threshold_mib` (default: 100) - when allocated data exceeds this amount, the "compaction needed" flag will be enabled
 - `compaction.rebound_trigger_threshold_mib` (default: 10) - if the "compaction needed" flag is set and allocated data drops below this amount, compaction will begin and the "compaction needed" flag will be cleared
 - `compaction.check_interval` (default: 5s) - specifies how frequently the conditions for compaction are being checked
+- `compaction.compaction_timeout` (optional) - specifies the timeout for compaction operations. If not set, the main `timeout` value is used. Compaction operations may require a longer timeout than regular database operations.
 
 The idea behind rebound compaction is that in certain workloads (e.g. [persistent queue](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/exporterhelper#persistent-queue)) the storage might grow significantly (e.g. when the exporter is unable to send the data due to network problem) after which it is being emptied as the underlying issue is gone (e.g. network connectivity is back). This leaves a significant space that needs to be reclaimed (also, this space is reported in memory usage as mmap() is used underneath). The optimal conditions for this to happen online is after the storage is largely drained, which is being controlled by `rebound_trigger_threshold_mib`. To make sure this is not too sensitive, there's also `rebound_needed_threshold_mib` which specifies the total claimed space size that must be met for online compaction to even be considered. Consider following diagram for an example of meeting the rebound (online) compaction conditions.
 
@@ -92,6 +93,7 @@ extensions:
       on_start: true
       directory: /tmp/
       max_transaction_size: 65_536
+      compaction_timeout: 10s
     fsync: false
 
 service:

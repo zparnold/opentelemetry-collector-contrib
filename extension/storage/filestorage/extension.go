@@ -83,7 +83,8 @@ func (lfs *localFileStorage) GetClient(_ context.Context, kind component.Kind, e
 
 	// return if compaction is not required
 	if lfs.cfg.Compaction.OnStart {
-		compactionErr := client.Compact(lfs.cfg.Compaction.Directory, lfs.cfg.Timeout, lfs.cfg.Compaction.MaxTransactionSize)
+		compactionTimeout := lfs.cfg.Compaction.GetCompactionTimeout(lfs.cfg.Timeout)
+		compactionErr := client.Compact(lfs.cfg.Compaction.Directory, compactionTimeout, lfs.cfg.Compaction.MaxTransactionSize)
 		if compactionErr != nil {
 			lfs.logger.Error("compaction on start failed", zap.Error(compactionErr))
 		}

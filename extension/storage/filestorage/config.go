@@ -58,10 +58,22 @@ type CompactionConfig struct {
 	MaxTransactionSize int64 `mapstructure:"max_transaction_size,omitempty"`
 	// CheckInterval specifies frequency of compaction check
 	CheckInterval time.Duration `mapstructure:"check_interval,omitempty"`
+	// CompactionTimeout specifies the timeout for compaction operations.
+	// If not specified, the main timeout from Config.Timeout is used.
+	CompactionTimeout time.Duration `mapstructure:"compaction_timeout,omitempty"`
 	// CleanupOnStart specifies removal of temporary files is performed on start.
 	// It will remove all the files in the compaction directory starting with tempdb,
 	// temp files will be left if a previous run of the process is killed while compacting.
 	CleanupOnStart bool `mapstructure:"cleanup_on_start,omitempty"`
+}
+
+// GetCompactionTimeout returns the timeout to use for compaction operations.
+// If CompactionTimeout is not set, it returns the provided fallback timeout.
+func (cc *CompactionConfig) GetCompactionTimeout(fallbackTimeout time.Duration) time.Duration {
+	if cc.CompactionTimeout > 0 {
+		return cc.CompactionTimeout
+	}
+	return fallbackTimeout
 }
 
 func (cfg *Config) Validate() error {

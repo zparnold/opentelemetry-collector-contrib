@@ -30,13 +30,14 @@ const (
 )
 
 type fileStorageClient struct {
-	logger          *zap.Logger
-	compactionMutex sync.RWMutex
-	db              *bbolt.DB
-	compactionCfg   *CompactionConfig
-	openTimeout     time.Duration
-	cancel          context.CancelFunc
-	closed          bool
+	logger            *zap.Logger
+	compactionMutex   sync.RWMutex
+	db                *bbolt.DB
+	compactionCfg     *CompactionConfig
+	openTimeout       time.Duration
+	compactionTimeout time.Duration
+	cancel            context.CancelFunc
+	closed            bool
 }
 
 func bboltOptions(timeout time.Duration, noSync bool) *bbolt.Options {
@@ -64,7 +65,14 @@ func newClient(logger *zap.Logger, filePath string, timeout time.Duration, compa
 		return nil, err
 	}
 
-	client := &fileStorageClient{logger: logger, db: db, compactionCfg: compactionCfg, openTimeout: timeout}
+	compactionTimeout := compactionCfg.GetCompactionTimeout(timeout)
+	client := &fileStorageClient{
+		logger:            logger,
+		db:                db,
+		compactionCfg:     compactionCfg,
+		openTimeout:       timeout,
+		compactionTimeout: compactionTimeout,
+	}
 	if compactionCfg.OnRebound {
 		client.startCompactionLoop(context.Background())
 	}
@@ -255,7 +263,7 @@ func (c *fileStorageClient) startCompactionLoop(ctx context.Context) {
 			select {
 			case <-compactionTicker.C:
 				if c.shouldCompact() {
-					err := c.Compact(c.compactionCfg.Directory, c.openTimeout, c.compactionCfg.MaxTransactionSize)
+					err := c.Compact(c.compactionCfg.Directory, c.compactionTimeout, c.compactionCfg.MaxTransactionSize)
 					if err != nil {
 						c.logger.Error("compaction failure",
 							zap.String(directoryKey, c.compactionCfg.Directory),

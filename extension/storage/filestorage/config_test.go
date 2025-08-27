@@ -48,6 +48,7 @@ func TestLoadConfig(t *testing.T) {
 					ReboundTriggerThresholdMiB: 16,
 					ReboundNeededThresholdMiB:  128,
 					CheckInterval:              time.Second * 5,
+					CompactionTimeout:          10 * time.Second,
 					CleanupOnStart:             true,
 				},
 				Timeout:              2 * time.Second,
@@ -269,6 +270,44 @@ func TestCompactionDirectory(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.ErrorIs(t, xconfmap.Validate(test.config(t)), test.err)
+		})
+	}
+}
+
+func TestGetCompactionTimeout(t *testing.T) {
+	tests := []struct {
+		name              string
+		compactionTimeout time.Duration
+		fallbackTimeout   time.Duration
+		expectedTimeout   time.Duration
+	}{
+		{
+			name:              "use compaction timeout when set",
+			compactionTimeout: 10 * time.Second,
+			fallbackTimeout:   2 * time.Second,
+			expectedTimeout:   10 * time.Second,
+		},
+		{
+			name:              "use fallback timeout when compaction timeout is zero",
+			compactionTimeout: 0,
+			fallbackTimeout:   2 * time.Second,
+			expectedTimeout:   2 * time.Second,
+		},
+		{
+			name:              "use fallback timeout when compaction timeout is negative",
+			compactionTimeout: -1 * time.Second,
+			fallbackTimeout:   2 * time.Second,
+			expectedTimeout:   2 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cc := &CompactionConfig{
+				CompactionTimeout: tt.compactionTimeout,
+			}
+			result := cc.GetCompactionTimeout(tt.fallbackTimeout)
+			assert.Equal(t, tt.expectedTimeout, result)
 		})
 	}
 }
